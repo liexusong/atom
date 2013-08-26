@@ -12,7 +12,18 @@ functions list:<br />
    Change unique ID to timestamp.<br />
 
 
-php.ini configure entries
--------------------------
+<h3>install:</h3>
+<pre><code>
+$  cd ./ukey
+$  phpize
+$  ./configure
+$  make
+$  sudo make install
+</code></pre>
+
+
+php.ini configure entries:
+--------------------------
+[ukey]<br />
 ukey.worker = integer<br />
 ukey.datacenter = integer<br />
