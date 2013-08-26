@@ -43,6 +43,7 @@ PHP_RSHUTDOWN_FUNCTION(ukey);
 PHP_MINFO_FUNCTION(ukey);
 
 PHP_FUNCTION(ukey_next_id);
+PHP_FUNCTION(ukey_to_timestamp);
 
 /* 
   	Declare any global variables you may need between the BEGIN

@@ -37,9 +37,9 @@
 
 
 #ifdef WIN32
-typedef __int64 ukey_int64;
+typedef unsigned __int64 ukey_uint64;
 #else
-typedef long long ukey_int64;
+typedef unsigned long long ukey_uint64;
 #endif
 
 typedef struct {
@@ -47,10 +47,10 @@ typedef struct {
     int datacenter_id;
 
     long sequence;
-    ukey_int64 last_timestamp;
+    ukey_uint64 last_timestamp;
 
     /* Various once initialized variables */
-    ukey_int64 twepoch;
+    ukey_uint64 twepoch;
     unsigned char worker_id_bits;
     unsigned char datacenter_id_bits;
     unsigned char sequence_bits;
@@ -73,6 +73,7 @@ static ukey_context_t *_ctx;
  */
 const zend_function_entry ukey_functions[] = {
     PHP_FE(ukey_next_id, NULL)
+    PHP_FE(ukey_to_timestamp, NULL)
     {NULL, NULL, NULL}
 };
 /* }}} */
@@ -229,7 +230,9 @@ PHP_MINFO_FUNCTION(ukey)
 /* }}} */
 
 
-#ifdef WIN32
+/* win32 helper function */
+
+#if 0
 static int
 gettimeofday(struct timeval *tp, void *tzp)
 {
@@ -257,27 +260,25 @@ gettimeofday(struct timeval *tp, void *tzp)
 #endif
 
 
-static ukey_int64 realy_time()
+static ukey_uint64 realy_time()
 {
-    struct timeval tv;
-    ukey_int64 retval;
+    time_t ts;
+    ukey_uint64 retval;
 
-    if (gettimeofday(&tv, NULL) == -1) {
-        return -1;
-    }
+    time(&ts);
 
-    retval = (ukey_int64)tv.tv_sec * 1000000 + (ukey_int64)tv.tv_usec;
+    retval = (ukey_uint64)ts * 1000;
 
     return retval;
 }
 
 
-static ukey_int64 skip_next_millis()
+static ukey_uint64 skip_next_millis()
 {
     struct timeval tv;
 
     tv.tv_sec = 0;
-    tv.tv_usec = 1;
+    tv.tv_usec = 1000; /* one millisecond */
 
     select(0, NULL, NULL, NULL, &tv);
 
@@ -290,12 +291,11 @@ static ukey_int64 skip_next_millis()
    purposes. */
 
 /* Every user-visible function in PHP should document itself in the source */
-/* {{{ proto string confirm_ukey_compiled(string arg)
-   Return a string to confirm that the module is compiled in */
+/* {{{ proto string ukey_next_id(void) */
 PHP_FUNCTION(ukey_next_id)
 {
-    ukey_int64 timestamp = realy_time();
-    ukey_int64 retval;
+    ukey_uint64 timestamp = realy_time();
+    ukey_uint64 retval;
     int len;
     char sbuf[128];
 
@@ -320,6 +320,44 @@ PHP_FUNCTION(ukey_next_id)
     len = sprintf(sbuf, "%llu", retval);
 
     RETURN_STRINGL(sbuf, len, 1);
+}
+/* }}} */
+
+
+static ukey_uint64 ukey_change_uint64(char *key)
+{
+    ukey_uint64 retval;
+
+    if (sscanf(key, "%llu", &retval) == 0) {
+        return 0;
+    }
+
+    return retval;
+}
+
+
+/* {{{ proto int ukey_to_timestamp(string key) */
+PHP_FUNCTION(ukey_to_timestamp)
+{
+    ukey_uint64 id;
+    char *key;
+    int len, ts;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, 
+            &len TSRMLS_CC) == FAILURE)
+    {
+        RETURN_FALSE;
+    }
+
+    id = ukey_change_uint64(key);
+    if (!id) {
+        RETURN_FALSE;
+    }
+
+    id = (id >> _ctx->timestamp_left_shift) + _ctx->twepoch;
+    ts = id / 1000;
+
+    RETURN_LONG(ts);
 }
 /* }}} */
 /* The previous line is meant for vim and emacs, so it can correctly fold and 
