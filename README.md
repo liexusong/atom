@@ -34,8 +34,9 @@ $  sudo make install
 </code></pre>
 
 
-php.ini configure entries:
---------------------------
-[ukey]<br />
-ukey.worker = integer<br />
-ukey.datacenter = integer<br />
+<h3>php.ini configure entries:</h3>
+<pre><code>
+[ukey]
+ukey.worker = integer
+ukey.datacenter = integer
+</code></pre>
