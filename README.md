@@ -5,11 +5,23 @@ ukey
 
 functions list:<br />
 
-* 1) string ukey_next_id(void);<br />
+* 1) string <b>ukey_next_id</b>(void);<br />
 &nbsp;&nbsp;&nbsp;Get the next unique ID.<br />
 
-* 2) int ukey_to_timestamp(string ID);<br />
+* 2) int <b>ukey_to_timestamp</b>(string ID);<br />
 &nbsp;&nbsp;&nbsp;Change unique ID to timestamp.<br />
+
+
+<h3>example:</h3>
+<pre><code>
+&lt;?php
+$id = ukey_next_id();
+echo $id;
+
+$timestamp = ukey_to_timestamp($id);
+echo date('Y-m-d H:i:s', $timestamp);
+?&gt;
+</code></pre>
 
 
 <h3>install:</h3>
