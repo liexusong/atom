@@ -24,6 +24,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/select.h>
+#include <sys/mman.h>
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -34,6 +35,10 @@
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "php_ukey.h"
+#include "lock.h"
+
+
+#define UKEY_LOCK_FILE  "/tmp/ukey.lock"
 
 
 #ifdef WIN32
@@ -66,6 +71,7 @@ static int le_ukey;
 static int worker_id;
 static int datacenter_id;
 static ukey_context_t *_ctx;
+static int locker;
 
 /* {{{ ukey_functions[]
  *
@@ -141,8 +147,17 @@ PHP_INI_END()
 
 int ukey_startup(int worker_id, int datacenter_id)
 {
-    _ctx = malloc(sizeof(ukey_context_t));
+    /* _ctx = malloc(sizeof(ukey_context_t)); */
+
+    locker = locker_open(UKEY_LOCK_FILE);
+    if (locker == -1) {
+        return -1;
+    }
+
+    _ctx = (ukey_context_t *)mmap(NULL, sizeof(ukey_context_t),
+              PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
     if (!_ctx) {
+        locker_destroy(locker);
         return -1;
     }
 
@@ -169,7 +184,9 @@ int ukey_startup(int worker_id, int datacenter_id)
 
 void ukey_shutdown()
 {
-    free(_ctx);
+    locker_destroy(locker);
+    unlink(UKEY_LOCK_FILE);
+    munmap(_ctx, sizeof(ukey_context_t));
 }
 
 
@@ -179,7 +196,9 @@ PHP_MINIT_FUNCTION(ukey)
 {
     REGISTER_INI_ENTRIES();
 
-    ukey_startup(worker_id, datacenter_id);
+    if (ukey_startup(worker_id, datacenter_id) == -1) {
+        return FAILURE;
+    }
 
     return SUCCESS;
 }
@@ -299,6 +318,8 @@ PHP_FUNCTION(ukey_next_id)
     int len;
     char sbuf[128];
 
+    locker_wrlock(locker); /* Lock the context */
+
     if (_ctx->last_timestamp == timestamp) {
         _ctx->sequence = (_ctx->sequence + 1) & _ctx->sequence_mask;
 
@@ -307,7 +328,7 @@ PHP_FUNCTION(ukey_next_id)
         }
 
     } else {
-        _ctx->sequence = 0;
+        _ctx->sequence = 0; /* Back to zero */
     }
 
     _ctx->last_timestamp = timestamp;
@@ -316,6 +337,8 @@ PHP_FUNCTION(ukey_next_id)
           (_ctx->datacenter_id << _ctx->datacenter_id_shift) |
           (_ctx->worker_id << _ctx->worker_id_shift) |
           _ctx->sequence;
+
+    locker_unlock(locker);  /* Unlock */
 
     len = sprintf(sbuf, "%llu", retval);
 
@@ -354,6 +377,8 @@ PHP_FUNCTION(ukey_to_timestamp)
         RETURN_FALSE;
     }
 
+    /* Don't need lock share here,
+     * Because timestamp_left_shift and twepoch unchanging */
     id = (id >> _ctx->timestamp_left_shift) + _ctx->twepoch;
     ts = id / 1000;
 
