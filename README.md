@@ -10,3 +10,9 @@ functions list:<br />
 
 2) ukey_to_timestamp(string ID);<br />
    Change unique ID to timestamp.<br />
+
+
+php.ini configure entries
+-------------------------
+ukey.worker = integer<br />
+ukey.datacenter = integer<br />
