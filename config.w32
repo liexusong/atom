@@ -1,0 +1,13 @@
+// $Id$
+// vim:ft=javascript
+
+// If your extension references something external, use ARG_WITH
+// ARG_WITH("ukey", "for ukey support", "no");
+
+// Otherwise, use ARG_ENABLE
+// ARG_ENABLE("ukey", "enable ukey support", "no");
+
+if (PHP_UKEY != "no") {
+	EXTENSION("ukey", "ukey.c");
+}
+
