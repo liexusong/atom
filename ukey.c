@@ -151,7 +151,7 @@ int ukey_startup(int worker_id, int datacenter_id)
     _ctx->sequence = 0;
     _ctx->last_timestamp = -1;
 
-    _ctx->twepoch = 1288834974657;
+    _ctx->twepoch = 1288834974657LL;
     _ctx->worker_id_bits = 5;
     _ctx->datacenter_id_bits = 5;
     _ctx->sequence_bits = 12;
