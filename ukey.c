@@ -2,7 +2,7 @@
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2010 The PHP Group                                |
+  | Copyright (c) 1997-2013 The PHP Group                                |
   +----------------------------------------------------------------------+
   | This source file is subject to version 3.01 of the PHP license,      |
   | that is bundled with this package in the file LICENSE, and is        |
@@ -323,11 +323,8 @@ static ukey_uint64 skip_next_millis()
 }
 
 
-/* Remove the following function when you have succesfully modified config.m4
-   so that your module can be compiled into PHP, it exists only for testing
-   purposes. */
-
 /* Every user-visible function in PHP should document itself in the source */
+
 /* {{{ proto string ukey_next_id(void) */
 PHP_FUNCTION(ukey_next_id)
 {
@@ -436,12 +433,6 @@ PHP_FUNCTION(ukey_to_machine)
     return;
 }
 /* }}} */
-/* The previous line is meant for vim and emacs, so it can correctly fold and 
-   unfold functions in source code. See the corresponding marks just before 
-   function definition, where the functions purpose is also documented. Please 
-   follow this convention for the convenience of others editing your code.
-*/
-
 
 /*
  * Local variables:
