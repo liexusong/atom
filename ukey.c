@@ -185,7 +185,6 @@ int ukey_startup(int worker_id, int datacenter_id)
 void ukey_shutdown()
 {
     locker_destroy(locker);
-    unlink(UKEY_LOCK_FILE);
     munmap(_ctx, sizeof(ukey_context_t));
 }
 
