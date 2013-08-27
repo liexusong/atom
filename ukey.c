@@ -70,6 +70,7 @@ typedef struct {
 static int le_ukey;
 static int worker_id;
 static int datacenter_id;
+static ukey_uint64 twepoch;
 static ukey_context_t *_ctx;
 static int locker;
 
@@ -138,15 +139,31 @@ ZEND_INI_MH(ukey_ini_datacenter_id)
     return SUCCESS;
 }
 
+ZEND_INI_MH(ukey_ini_twepoch)
+{
+    if (new_value_length == 0) {
+        return FAILURE;
+    }
+
+    sscanf(new_value, "%llu", &twepoch);
+    if (twepoch <= 0ULL) {
+        return FAILURE;
+    }
+
+    return SUCCESS;
+}
+
 PHP_INI_BEGIN()
     PHP_INI_ENTRY("ukey.worker", "0", PHP_INI_ALL,
           ukey_ini_worker_id)
     PHP_INI_ENTRY("ukey.datacenter", "0", PHP_INI_ALL,
           ukey_ini_datacenter_id)
+    PHP_INI_ENTRY("ukey.twepoch", "1288834974657", PHP_INI_ALL,
+          ukey_ini_twepoch)
 PHP_INI_END()
 
 
-int ukey_startup(int worker_id, int datacenter_id)
+int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 {
     /* _ctx = malloc(sizeof(ukey_context_t)); */
 
@@ -162,13 +179,13 @@ int ukey_startup(int worker_id, int datacenter_id)
         return -1;
     }
 
+    _ctx->twepoch = twepoch;
     _ctx->worker_id = worker_id;
     _ctx->datacenter_id = datacenter_id;
 
     _ctx->sequence = 0;
     _ctx->last_timestamp = -1;
 
-    _ctx->twepoch = 1288834974657LL;
     _ctx->worker_id_bits = 5;
     _ctx->datacenter_id_bits = 5;
     _ctx->sequence_bits = 12;
@@ -196,7 +213,7 @@ PHP_MINIT_FUNCTION(ukey)
 {
     REGISTER_INI_ENTRIES();
 
-    if (ukey_startup(worker_id, datacenter_id) == -1) {
+    if (ukey_startup(twepoch, worker_id, datacenter_id) == -1) {
         return FAILURE;
     }
 
@@ -282,10 +299,12 @@ static ukey_uint64 realy_time()
     struct timeval tv;
     ukey_uint64 retval;
 
-    gettimeofday(&tv, NULL);
-    
-    retval = (ukey_uint64)tv.tv_sec * 1000 + 
-             (ukey_uint64)tv.tv_usec / 1000;
+    if (gettimeofday(&tv, NULL) == -1) {
+        return 0LL;
+    }
+
+    retval = (ukey_uint64)tv.tv_sec * 1000LL + 
+             (ukey_uint64)tv.tv_usec / 1000LL;
 
     return retval;
 }
