@@ -1,5 +1,6 @@
 ukey
 ====
+Based on the Twitter Snowflake algorithm
 
 <h3>PHP unique ID generator</h3>
 
