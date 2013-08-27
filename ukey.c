@@ -96,8 +96,8 @@ zend_module_entry ukey_module_entry = {
     ukey_functions,
     PHP_MINIT(ukey),
     PHP_MSHUTDOWN(ukey),
-    PHP_RINIT(ukey),        /* Replace with NULL if there's nothing to do at request start */
-    PHP_RSHUTDOWN(ukey),    /* Replace with NULL if there's nothing to do at request end */
+    PHP_RINIT(ukey),
+    PHP_RSHUTDOWN(ukey),
     PHP_MINFO(ukey),
 #if ZEND_MODULE_API_NO >= 20010901
     "0.1", /* Replace with version number for your extension */
@@ -294,7 +294,7 @@ gettimeofday(struct timeval *tp, void *tzp)
 #endif
 
 
-static ukey_uint64 realy_time()
+static ukey_uint64 really_time()
 {
     struct timeval tv;
     ukey_uint64 retval;
@@ -319,7 +319,7 @@ static ukey_uint64 skip_next_millis()
 
     select(0, NULL, NULL, NULL, &tv);
 
-    return realy_time();
+    return really_time();
 }
 
 
@@ -328,7 +328,7 @@ static ukey_uint64 skip_next_millis()
 /* {{{ proto string ukey_next_id(void) */
 PHP_FUNCTION(ukey_next_id)
 {
-    ukey_uint64 timestamp = realy_time();
+    ukey_uint64 timestamp = really_time();
     ukey_uint64 retval;
     int len;
     char sbuf[128];

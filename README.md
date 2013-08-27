@@ -12,6 +12,9 @@ functions list:<br />
 * 2) int <b>ukey_to_timestamp</b>(string ID);<br />
 &nbsp;&nbsp;&nbsp;Change unique ID to timestamp.<br />
 
+* 3) array <b>ukey_to_machine</b>(string ID);<br />
+&nbsp;&nbsp;&nbsp;Change unique ID to machine info.<br />
+
 
 <h3>example:</h3>
 <pre><code>
@@ -40,4 +43,5 @@ $  sudo make install
 [ukey]
 ukey.worker = integer
 ukey.datacenter = integer
+ukey.twepoch = uint64
 </code></pre>
