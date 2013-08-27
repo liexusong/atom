@@ -300,11 +300,11 @@ static ukey_uint64 realy_time()
     ukey_uint64 retval;
 
     if (gettimeofday(&tv, NULL) == -1) {
-        return 0LL;
+        return 0ULL;
     }
 
-    retval = (ukey_uint64)tv.tv_sec * 1000LL + 
-             (ukey_uint64)tv.tv_usec / 1000LL;
+    retval = (ukey_uint64)tv.tv_sec * 1000ULL + 
+             (ukey_uint64)tv.tv_usec / 1000ULL;
 
     return retval;
 }
@@ -398,12 +398,14 @@ PHP_FUNCTION(ukey_to_timestamp)
     /* Don't need lock share here,
      * Because timestamp_left_shift and twepoch unchanging */
     id = (id >> _ctx->timestamp_left_shift) + _ctx->twepoch;
-    ts = id / 1000;
+    ts = id / 1000ULL;
 
     RETURN_LONG(ts);
 }
+/* }}} */
 
 
+/* {{{ proto array ukey_to_machine(string key) */
 PHP_FUNCTION(ukey_to_machine)
 {
     ukey_uint64 id;
@@ -424,8 +426,8 @@ PHP_FUNCTION(ukey_to_machine)
 
     /* Don't need lock share here,
      * Because datacenter_id_shift and worker_id_shift unchanging */
-    datacenter = (id >> _ctx->datacenter_id_shift) & 0x1FLL;
-    worker = (id >> _ctx->worker_id_shift) & 0x1FLL;
+    datacenter = (id >> _ctx->datacenter_id_shift) & 0x1FULL;
+    worker = (id >> _ctx->worker_id_shift) & 0x1FULL;
 
     array_init(return_value);
     add_assoc_long(return_value, "datacenter", datacenter);
