@@ -80,6 +80,7 @@ static int locker;
 const zend_function_entry ukey_functions[] = {
     PHP_FE(ukey_next_id, NULL)
     PHP_FE(ukey_to_timestamp, NULL)
+    PHP_FE(ukey_to_machine, NULL)
     {NULL, NULL, NULL}
 };
 /* }}} */
@@ -278,12 +279,13 @@ gettimeofday(struct timeval *tp, void *tzp)
 
 static ukey_uint64 realy_time()
 {
-    time_t ts;
+    struct timeval tv;
     ukey_uint64 retval;
 
-    time(&ts);
-
-    retval = (ukey_uint64)ts * 1000;
+    gettimeofday(&tv, NULL);
+    
+    retval = (ukey_uint64)tv.tv_sec * 1000 + 
+             (ukey_uint64)tv.tv_usec / 1000;
 
     return retval;
 }
@@ -380,6 +382,37 @@ PHP_FUNCTION(ukey_to_timestamp)
     ts = id / 1000;
 
     RETURN_LONG(ts);
+}
+
+
+PHP_FUNCTION(ukey_to_machine)
+{
+    ukey_uint64 id;
+    int datacenter, worker;
+    char *key;
+    int len;
+
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, 
+            &len TSRMLS_CC) == FAILURE)
+    {
+        RETURN_FALSE;
+    }
+
+    id = ukey_change_uint64(key);
+    if (!id) {
+        RETURN_FALSE;
+    }
+
+    /* Don't need lock share here,
+     * Because datacenter_id_shift and worker_id_shift unchanging */
+    datacenter = (id >> _ctx->datacenter_id_shift) & 0x1FLL;
+    worker = (id >> _ctx->worker_id_shift) & 0x1FLL;
+
+    array_init(return_value);
+    add_assoc_long(return_value, "datacenter", datacenter);
+    add_assoc_long(return_value, "worker", worker);
+
+    return;
 }
 /* }}} */
 /* The previous line is meant for vim and emacs, so it can correctly fold and 

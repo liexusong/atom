@@ -44,6 +44,7 @@ PHP_MINFO_FUNCTION(ukey);
 
 PHP_FUNCTION(ukey_next_id);
 PHP_FUNCTION(ukey_to_timestamp);
+PHP_FUNCTION(ukey_to_machine);
 
 /* 
   	Declare any global variables you may need between the BEGIN
