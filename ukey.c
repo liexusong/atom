@@ -40,6 +40,7 @@
 
 #define UKEY_LOCK_FILE  "/tmp/ukey.lock"
 
+/* win32 not support */
 
 #ifdef WIN32
 typedef unsigned __int64 ukey_uint64;
@@ -71,7 +72,7 @@ static int le_ukey;
 static int worker_id;
 static int datacenter_id;
 static ukey_uint64 twepoch;
-static ukey_context_t *_ctx;
+static ukey_context_t *context;
 static int locker;
 
 /* {{{ ukey_functions[]
@@ -165,36 +166,37 @@ PHP_INI_END()
 
 int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 {
-    /* _ctx = malloc(sizeof(ukey_context_t)); */
+    /* context = malloc(sizeof(ukey_context_t)); */
 
     locker = locker_open(UKEY_LOCK_FILE);
     if (locker == -1) {
         return -1;
     }
 
-    _ctx = (ukey_context_t *)mmap(NULL, sizeof(ukey_context_t),
-              PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
-    if (!_ctx) {
+    context = (ukey_context_t *)mmap(NULL, sizeof(ukey_context_t),
+          PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
+    if (!context) {
         locker_destroy(locker);
         return -1;
     }
 
-    _ctx->twepoch = twepoch;
-    _ctx->worker_id = worker_id;
-    _ctx->datacenter_id = datacenter_id;
+    context->twepoch = twepoch;
+    context->worker_id = worker_id;
+    context->datacenter_id = datacenter_id;
 
-    _ctx->sequence = 0;
-    _ctx->last_timestamp = -1;
+    context->sequence = 0;
+    context->last_timestamp = 0ULL;
 
-    _ctx->worker_id_bits = 5;
-    _ctx->datacenter_id_bits = 5;
-    _ctx->sequence_bits = 12;
+    context->worker_id_bits = 5;
+    context->datacenter_id_bits = 5;
+    context->sequence_bits = 12;
 
-    _ctx->worker_id_shift = _ctx->sequence_bits;
-    _ctx->datacenter_id_shift = _ctx->sequence_bits + _ctx->worker_id_bits;
-    _ctx->timestamp_left_shift = _ctx->sequence_bits + _ctx->worker_id_bits + 
-          _ctx->datacenter_id_bits;
-    _ctx->sequence_mask = -1 ^ (-1 << _ctx->sequence_bits);
+    context->worker_id_shift = context->sequence_bits;
+    context->datacenter_id_shift = context->sequence_bits +
+          context->worker_id_bits;
+    context->timestamp_left_shift = context->sequence_bits +
+          context->worker_id_bits + context->datacenter_id_bits;
+    context->sequence_mask = -1 ^ (-1 << context->sequence_bits);
 
     return 0;
 }
@@ -203,7 +205,7 @@ int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 void ukey_shutdown()
 {
     locker_destroy(locker);
-    munmap(_ctx, sizeof(ukey_context_t));
+    munmap(context, sizeof(ukey_context_t));
 }
 
 
@@ -317,7 +319,7 @@ static ukey_uint64 skip_next_millis()
     tv.tv_sec = 0;
     tv.tv_usec = 1000; /* one millisecond */
 
-    select(0, NULL, NULL, NULL, &tv);
+    select(0, NULL, NULL, NULL, &tv); /* Sleep here */
 
     return really_time();
 }
@@ -333,25 +335,29 @@ PHP_FUNCTION(ukey_next_id)
     int len;
     char sbuf[128];
 
+    if (timestamp == 0ULL) {
+        RETURN_FALSE;
+    }
+
     locker_wrlock(locker); /* Lock the context */
 
-    if (_ctx->last_timestamp == timestamp) {
-        _ctx->sequence = (_ctx->sequence + 1) & _ctx->sequence_mask;
+    if (context->last_timestamp == timestamp) {
+        context->sequence = (context->sequence + 1) & context->sequence_mask;
 
-        if (_ctx->sequence == 0) {
+        if (context->sequence == 0) {
             timestamp = skip_next_millis();
         }
 
     } else {
-        _ctx->sequence = 0; /* Back to zero */
+        context->sequence = 0; /* Back to zero */
     }
 
-    _ctx->last_timestamp = timestamp;
+    context->last_timestamp = timestamp;
 
-    retval = ((timestamp - _ctx->twepoch) << _ctx->timestamp_left_shift) |
-          (_ctx->datacenter_id << _ctx->datacenter_id_shift) |
-          (_ctx->worker_id << _ctx->worker_id_shift) |
-          _ctx->sequence;
+    retval = ((timestamp - context->twepoch) << context->timestamp_left_shift) |
+          (context->datacenter_id << context->datacenter_id_shift) |
+          (context->worker_id << context->worker_id_shift) |
+          context->sequence;
 
     locker_unlock(locker);  /* Unlock */
 
@@ -394,7 +400,7 @@ PHP_FUNCTION(ukey_to_timestamp)
 
     /* Don't need lock share here,
      * Because timestamp_left_shift and twepoch unchanging */
-    id = (id >> _ctx->timestamp_left_shift) + _ctx->twepoch;
+    id = (id >> context->timestamp_left_shift) + context->twepoch;
     ts = id / 1000ULL;
 
     RETURN_LONG(ts);
@@ -423,8 +429,8 @@ PHP_FUNCTION(ukey_to_machine)
 
     /* Don't need lock share here,
      * Because datacenter_id_shift and worker_id_shift unchanging */
-    datacenter = (id >> _ctx->datacenter_id_shift) & 0x1FULL;
-    worker = (id >> _ctx->worker_id_shift) & 0x1FULL;
+    datacenter = (id >> context->datacenter_id_shift) & 0x1FULL;
+    worker = (id >> context->worker_id_shift) & 0x1FULL;
 
     array_init(return_value);
     add_assoc_long(return_value, "datacenter", datacenter);
