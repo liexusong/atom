@@ -59,5 +59,5 @@ if test "$PHP_UKEY" != "no"; then
   dnl
   dnl PHP_SUBST(UKEY_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(ukey, ukey.c lock.c, $ext_shared)
+  PHP_NEW_EXTENSION(ukey, ukey.c spinlock.c, shm.c, $ext_shared)
 fi

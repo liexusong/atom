@@ -18,14 +18,9 @@
 
 /* $Id: header 297205 2010-03-30 21:09:07Z johannes $ */
 
-#ifdef WIN32
-#include <windows.h>
-#else
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/select.h>
-#include <sys/mman.h>
-#endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -35,18 +30,11 @@
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "php_ukey.h"
-#include "lock.h"
+#include "spinlock.h"
+#include "shm.h"
 
 
-#define UKEY_LOCK_FILE  "/tmp/ukey.lock"
-
-/* win32 not support */
-
-#ifdef WIN32
-typedef unsigned __int64 ukey_uint64;
-#else
 typedef unsigned long long ukey_uint64;
-#endif
 
 typedef struct {
     int worker_id;
@@ -67,13 +55,17 @@ typedef struct {
 } ukey_context_t;
 
 
+int ncpu;
+
 /* True global resources - no need for thread safety here */
 static int le_ukey;
 static int worker_id;
 static int datacenter_id;
 static ukey_uint64 twepoch;
+static struct shm locker_shm;
+static struct shm context_shm;
 static ukey_context_t *context;
-static int locker;
+static int *lock;
 
 /* {{{ ukey_functions[]
  *
@@ -166,19 +158,18 @@ PHP_INI_END()
 
 int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 {
-    /* context = malloc(sizeof(ukey_context_t)); */
-
-    locker = locker_open(UKEY_LOCK_FILE);
-    if (locker == -1) {
+    locker_shm.size = sizeof(int);
+    if (shm_alloc(&locker_shm) == -1) {
         return -1;
     }
+    lock = locker_shm.addr; *lock = 0; /* init lock value */
 
-    context = (ukey_context_t *)mmap(NULL, sizeof(ukey_context_t),
-          PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANON, -1, 0);
-    if (!context) {
-        locker_destroy(locker);
+    context_shm.size = sizeof(ukey_context_t);
+    if (shm_alloc(&context_shm) == -1) {
+        shm_free(&locker_shm);
         return -1;
     }
+    context = context_shm.addr;
 
     context->twepoch = twepoch;
     context->worker_id = worker_id;
@@ -204,8 +195,8 @@ int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 
 void ukey_shutdown()
 {
-    locker_destroy(locker);
-    munmap(context, sizeof(ukey_context_t));
+    shm_free(&locker_shm);
+    shm_free(&context_shm);
 }
 
 
@@ -217,6 +208,11 @@ PHP_MINIT_FUNCTION(ukey)
 
     if (ukey_startup(twepoch, worker_id, datacenter_id) == -1) {
         return FAILURE;
+    }
+
+    ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+    if (ncpu <= 0) {
+        ncpu = 1;
     }
 
     return SUCCESS;
@@ -266,36 +262,6 @@ PHP_MINFO_FUNCTION(ukey)
 /* }}} */
 
 
-/* win32 helper function */
-
-#if 0
-static int
-gettimeofday(struct timeval *tp, void *tzp)
-{
-    time_t clock;
-    struct tm tm;
-    SYSTEMTIME wtm;
-
-    GetLocalTime(&wtm);
-
-    tm.tm_year     = wtm.wYear - 1900;
-    tm.tm_mon      = wtm.wMonth - 1;
-    tm.tm_mday     = wtm.wDay;
-    tm.tm_hour     = wtm.wHour;
-    tm.tm_min      = wtm.wMinute;
-    tm.tm_sec      = wtm.wSecond;
-    tm. tm_isdst   = -1;
-
-    clock = mktime(&tm);
-
-    tp->tv_sec = clock;
-    tp->tv_usec = wtm.wMilliseconds * 1000;
-
-    return (0);
-}
-#endif
-
-
 static ukey_uint64 really_time()
 {
     struct timeval tv;
@@ -319,7 +285,7 @@ static ukey_uint64 skip_next_millis()
     tv.tv_sec = 0;
     tv.tv_usec = 1000; /* one millisecond */
 
-    select(0, NULL, NULL, NULL, &tv); /* Sleep here */
+    select(0, NULL, NULL, NULL, &tv); /* wait here */
 
     return really_time();
 }
@@ -334,12 +300,13 @@ PHP_FUNCTION(ukey_next_id)
     ukey_uint64 retval;
     int len;
     char sbuf[128];
+    int pid = (int)getpid();
 
     if (timestamp == 0ULL) {
         RETURN_FALSE;
     }
 
-    locker_wrlock(locker); /* Lock the context */
+    spin_lock(lock, pid);
 
     if (context->last_timestamp == timestamp) {
         context->sequence = (context->sequence + 1) & context->sequence_mask;
@@ -359,7 +326,7 @@ PHP_FUNCTION(ukey_next_id)
           (context->worker_id << context->worker_id_shift) |
           context->sequence;
 
-    locker_unlock(locker);  /* Unlock */
+    spin_unlock(lock, pid);
 
     len = sprintf(sbuf, "%llu", retval);
 
