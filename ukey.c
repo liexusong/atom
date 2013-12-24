@@ -93,7 +93,7 @@ zend_module_entry ukey_module_entry = {
     PHP_RSHUTDOWN(ukey),
     PHP_MINFO(ukey),
 #if ZEND_MODULE_API_NO >= 20010901
-    "0.1", /* Replace with version number for your extension */
+    "0.2", /* Replace with version number for your extension */
 #endif
     STANDARD_MODULE_PROPERTIES
 };
