@@ -158,20 +158,41 @@ PHP_INI_END()
 
 int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 {
-    locker_shm.size = sizeof(int);
-    if (shm_alloc(&locker_shm) == -1) {
-        php_printf("Fatal error: Unable create share memory for ukey locker\n");
-        return -1;
-    }
-    lock = locker_shm.addr; *lock = 0; /* init lock value */
+    /* If is CLI's SAPI,
+     * we don't use share memory. */
+    if (!strcasecmp(sapi_module.name, "cli")) {
 
-    context_shm.size = sizeof(ukey_context_t);
-    if (shm_alloc(&context_shm) == -1) {
-        php_printf("Fatal error: Unable create share memory for ukey context\n");
-        shm_free(&locker_shm);
-        return -1;
+        lock = malloc(sizeof(int));
+        if (!lock) {
+            php_printf("Fatal error: Unable create memory for ukey locker\n");
+            return -1;
+        }
+
+        context = malloc(sizeof(ukey_context_t));
+        if (!context) {
+            php_printf("Fatal error: Unable create memory for ukey context\n");
+            free(lock);
+            return -1;
+        }
+
+    } else {
+        locker_shm.size = sizeof(int);
+        if (shm_alloc(&locker_shm) == -1) {
+            php_printf("Fatal error: Unable create memory for ukey locker\n");
+            return -1;
+        }
+        lock = locker_shm.addr;
+    
+        context_shm.size = sizeof(ukey_context_t);
+        if (shm_alloc(&context_shm) == -1) {
+            php_printf("Fatal error: Unable create memory for ukey context\n");
+            shm_free(&locker_shm);
+            return -1;
+        }
+        context = context_shm.addr;
     }
-    context = context_shm.addr;
+
+    *lock = 0;
 
     context->twepoch = twepoch;
     context->worker_id = worker_id;
@@ -197,8 +218,14 @@ int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 
 void ukey_shutdown()
 {
-    shm_free(&locker_shm);
-    shm_free(&context_shm);
+    if (!strcasecmp(sapi_module.name, "cli")) {
+        free(lock);
+        free(context);
+
+    } else {
+        shm_free(&locker_shm);
+        shm_free(&context_shm);
+    }
 }
 
 
