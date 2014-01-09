@@ -24,14 +24,14 @@
 extern int ncpu;
 
 
-void spin_lock(int *lock, int win)
+void spin_lock(int *lock, int which)
 {
     int i, n;
 
     for ( ;; ) {
 
         if (*lock == 0 && 
-            __sync_bool_compare_and_swap(lock, 0, win)) {
+            __sync_bool_compare_and_swap(lock, 0, which)) {
             return;
         }
 
@@ -44,7 +44,7 @@ void spin_lock(int *lock, int win)
                 }
     
                 if (*lock == 0 && 
-                    __sync_bool_compare_and_swap(lock, 0, win)) {
+                    __sync_bool_compare_and_swap(lock, 0, which)) {
                     return;
                 }
             }
@@ -55,8 +55,8 @@ void spin_lock(int *lock, int win)
 }
 
 
-void spin_unlock(int *lock, int win)
+void spin_unlock(int *lock, int which)
 {
-    __sync_bool_compare_and_swap(lock, win, 0);
+    __sync_bool_compare_and_swap(lock, which, 0);
 }
 

@@ -12,7 +12,7 @@
   | obtain it through the world-wide-web, please send a note to          |
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
-  | Author: YukChung Lie <liexusong@qq.com>                              |
+  | Author: Liexusong <liexusong@qq.com>                                 |
   +----------------------------------------------------------------------+
 */
 
@@ -160,12 +160,14 @@ int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 {
     locker_shm.size = sizeof(int);
     if (shm_alloc(&locker_shm) == -1) {
+        php_printf("Fatal error: Unable create share memory for ukey locker\n");
         return -1;
     }
     lock = locker_shm.addr; *lock = 0; /* init lock value */
 
     context_shm.size = sizeof(ukey_context_t);
     if (shm_alloc(&context_shm) == -1) {
+        php_printf("Fatal error: Unable create share memory for ukey context\n");
         shm_free(&locker_shm);
         return -1;
     }
