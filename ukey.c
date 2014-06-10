@@ -59,6 +59,7 @@ typedef struct {
 int ncpu;
 
 /* True global resources - no need for thread safety here */
+static int module_init = 0;
 static int le_ukey;
 static int worker_id;
 static int datacenter_id;
@@ -219,6 +220,10 @@ int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 
 void ukey_shutdown()
 {
+    if (!module_init) {
+        return;
+    }
+
     if (!strcasecmp(sapi_module.name, "cli")) {
         free(lock);
         free(context);
@@ -227,6 +232,20 @@ void ukey_shutdown()
         shm_free(&locker_shm);
         shm_free(&context_shm);
     }
+
+    module_init = 0;
+}
+
+
+static void exit_cb(void)
+{
+    int pid = (int)getpid();
+
+    if (lock == pid) {
+        spin_unlock(lock, pid);
+    }
+
+    ukey_shutdown();
 }
 
 
@@ -244,6 +263,10 @@ PHP_MINIT_FUNCTION(ukey)
     if (ncpu <= 0) {
         ncpu = 1;
     }
+
+    atexit(exit_cb);
+
+    module_init = 1;
 
     return SUCCESS;
 }
