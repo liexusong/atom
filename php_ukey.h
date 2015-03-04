@@ -72,6 +72,26 @@ ZEND_END_MODULE_GLOBALS(ukey)
 #define UKEY_G(v) (ukey_globals.v)
 #endif
 
+typedef unsigned long long __uint64_t;
+
+typedef struct {
+    int worker_id;
+    int datacenter_id;
+
+    long sequence;
+    __uint64_t last_timestamp;
+
+    /* Various once initialized variables */
+    __uint64_t twepoch;
+    unsigned char worker_id_bits;
+    unsigned char datacenter_id_bits;
+    unsigned char sequence_bits;
+    int worker_id_shift;
+    int datacenter_id_shift;
+    int timestamp_left_shift;
+    int sequence_mask;
+} ukey_context_t;
+
 #endif	/* PHP_UKEY_H */
 
 

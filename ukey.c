@@ -34,38 +34,16 @@
 #include "spinlock.h"
 #include "shm.h"
 
-
-typedef unsigned long long ukey_uint64;
-
-typedef struct {
-    int worker_id;
-    int datacenter_id;
-
-    long sequence;
-    ukey_uint64 last_timestamp;
-
-    /* Various once initialized variables */
-    ukey_uint64 twepoch;
-    unsigned char worker_id_bits;
-    unsigned char datacenter_id_bits;
-    unsigned char sequence_bits;
-    int worker_id_shift;
-    int datacenter_id_shift;
-    int timestamp_left_shift;
-    int sequence_mask;
-} ukey_context_t;
-
-
 int ncpu;
 
 /* True global resources - no need for thread safety here */
+static int pid = -1;
 static int module_init = 0;
 static int le_ukey;
-static int worker_id;
 static int datacenter_id;
-static ukey_uint64 twepoch;
-static struct shm locker_shm;
-static struct shm context_shm;
+static __uint64_t twepoch;
+static char *memaddr;
+static struct shm shmctx;
 static ukey_context_t *context;
 static int *lock;
 
@@ -95,7 +73,7 @@ zend_module_entry ukey_module_entry = {
     PHP_RSHUTDOWN(ukey),
     PHP_MINFO(ukey),
 #if ZEND_MODULE_API_NO >= 20010901
-    "0.2", /* Replace with version number for your extension */
+    "0.3", /* Replace with version number for your extension */
 #endif
     STANDARD_MODULE_PROPERTIES
 };
@@ -104,21 +82,6 @@ zend_module_entry ukey_module_entry = {
 #ifdef COMPILE_DL_UKEY
 ZEND_GET_MODULE(ukey)
 #endif
-
-
-ZEND_INI_MH(ukey_ini_worker_id)
-{
-    if (new_value_length == 0) {
-        return FAILURE;
-    }
-
-    worker_id = atoi(new_value);
-    if (worker_id < 0) {
-        return FAILURE;
-    }
-
-    return SUCCESS;
-}
 
 ZEND_INI_MH(ukey_ini_datacenter_id)
 {
@@ -149,55 +112,43 @@ ZEND_INI_MH(ukey_ini_twepoch)
 }
 
 PHP_INI_BEGIN()
-    PHP_INI_ENTRY("ukey.worker", "0", PHP_INI_ALL,
-          ukey_ini_worker_id)
     PHP_INI_ENTRY("ukey.datacenter", "0", PHP_INI_ALL,
           ukey_ini_datacenter_id)
     PHP_INI_ENTRY("ukey.twepoch", "1288834974657", PHP_INI_ALL,
           ukey_ini_twepoch)
 PHP_INI_END()
 
-
-int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
+int
+ukey_startup(__uint64_t twepoch, int datacenter_id)
 {
     /* If is CLI's SAPI,
      * we don't use share memory. */
     if (!strcasecmp(sapi_module.name, "cli")) {
 
-        lock = malloc(sizeof(int));
-        if (!lock) {
-            php_printf("Fatal error: Unable create memory for ukey locker\n");
+        memaddr = malloc(sizeof(int) + sizeof(ukey_context_t));
+        if (!memaddr) {
+            php_printf("Fatal error: Not enough memory\n");
             return -1;
         }
 
-        context = malloc(sizeof(ukey_context_t));
-        if (!context) {
-            php_printf("Fatal error: Unable create memory for ukey context\n");
-            free(lock);
-            return -1;
-        }
+        lock = memaddr;
+        context = memaddr + sizeof(int);
 
     } else {
-        locker_shm.size = sizeof(int);
-        if (shm_alloc(&locker_shm) == -1) {
-            php_printf("Fatal error: Unable create memory for ukey locker\n");
+        shmctx.size = sizeof(int) + sizeof(ukey_context_t);
+        if (shm_alloc(&shmctx) == -1) {
+            php_printf("Fatal error: Not enough memory\n");
             return -1;
         }
-        lock = locker_shm.addr;
-    
-        context_shm.size = sizeof(ukey_context_t);
-        if (shm_alloc(&context_shm) == -1) {
-            php_printf("Fatal error: Unable create memory for ukey context\n");
-            shm_free(&locker_shm);
-            return -1;
-        }
-        context = context_shm.addr;
+
+        lock = shmctx.addr;
+        context = (char *)shmctx.addr + sizeof(int);
     }
 
     *lock = 0;
 
     context->twepoch = twepoch;
-    context->worker_id = worker_id;
+    context->worker_id = -1;
     context->datacenter_id = datacenter_id;
 
     context->sequence = 0;
@@ -218,33 +169,29 @@ int ukey_startup(ukey_uint64 twepoch, int worker_id, int datacenter_id)
 }
 
 
-void ukey_shutdown()
+void
+ukey_shutdown()
 {
     if (!module_init) {
         return;
     }
 
     if (!strcasecmp(sapi_module.name, "cli")) {
-        free(lock);
-        free(context);
-
+        free(memaddr);
     } else {
-        shm_free(&locker_shm);
-        shm_free(&context_shm);
+        shm_free(&shmctx);
     }
 
     module_init = 0;
 }
 
 
-static void exit_cb(void)
+static void
+exit_cb(void)
 {
-    int pid = (int)getpid();
-
     if (lock == pid) {
         spin_unlock(lock, pid);
     }
-
     ukey_shutdown();
 }
 
@@ -255,7 +202,7 @@ PHP_MINIT_FUNCTION(ukey)
 {
     REGISTER_INI_ENTRIES();
 
-    if (ukey_startup(twepoch, worker_id, datacenter_id) == -1) {
+    if (ukey_startup(twepoch, datacenter_id) == -1) {
         return FAILURE;
     }
 
@@ -289,6 +236,14 @@ PHP_MSHUTDOWN_FUNCTION(ukey)
  */
 PHP_RINIT_FUNCTION(ukey)
 {
+    if (pid == -1) { /* init process ID */
+        pid = (int)getpid();
+    }
+
+    if (context->worker_id == -1) { /* init worker ID */
+        context->worker_id = pid & 0x1F;
+    }
+
     return SUCCESS;
 }
 /* }}} */
@@ -315,32 +270,34 @@ PHP_MINFO_FUNCTION(ukey)
 /* }}} */
 
 
-static ukey_uint64 really_time()
+static __uint64_t
+realtime()
 {
     struct timeval tv;
-    ukey_uint64 retval;
+    __uint64_t retval;
 
     if (gettimeofday(&tv, NULL) == -1) {
         return 0ULL;
     }
 
-    retval = (ukey_uint64)tv.tv_sec * 1000ULL + 
-             (ukey_uint64)tv.tv_usec / 1000ULL;
+    retval = (__uint64_t)tv.tv_sec * 1000ULL + 
+             (__uint64_t)tv.tv_usec / 1000ULL;
 
     return retval;
 }
 
 
-static ukey_uint64 skip_next_millis()
+static __uint64_t
+skip_next_millis()
 {
     struct timeval tv;
 
     tv.tv_sec = 0;
-    tv.tv_usec = 1000; /* one millisecond */
+    tv.tv_usec = 1000; /* 1 millisecond */
 
-    select(0, NULL, NULL, NULL, &tv); /* wait here */
+    select(0, NULL, NULL, NULL, &tv); /* waiting */
 
-    return really_time();
+    return realtime();
 }
 
 
@@ -349,11 +306,10 @@ static ukey_uint64 skip_next_millis()
 /* {{{ proto string ukey_next_id(void) */
 PHP_FUNCTION(ukey_next_id)
 {
-    ukey_uint64 timestamp = really_time();
-    ukey_uint64 retval;
+    __uint64_t timestamp = realtime();
+    __uint64_t retval;
     int len;
-    char sbuf[128];
-    int pid = (int)getpid();
+    char buf[128];
 
     if (timestamp == 0ULL) {
         RETURN_FALSE;
@@ -363,7 +319,6 @@ PHP_FUNCTION(ukey_next_id)
 
     if (context->last_timestamp == timestamp) {
         context->sequence = (context->sequence + 1) & context->sequence_mask;
-
         if (context->sequence == 0) {
             timestamp = skip_next_millis();
         }
@@ -381,16 +336,17 @@ PHP_FUNCTION(ukey_next_id)
 
     spin_unlock(lock, pid);
 
-    len = sprintf(sbuf, "%llu", retval);
+    len = sprintf(buf, "%llu", retval);
 
-    RETURN_STRINGL(sbuf, len, 1);
+    RETURN_STRINGL(buf, len, 1);
 }
 /* }}} */
 
 
-static ukey_uint64 ukey_change_uint64(char *key)
+static __uint64_t
+ukey_change_uint64(char *key)
 {
-    ukey_uint64 retval;
+    __uint64_t retval;
 
     if (sscanf(key, "%llu", &retval) == 0) {
         return 0;
@@ -403,7 +359,7 @@ static ukey_uint64 ukey_change_uint64(char *key)
 /* {{{ proto int ukey_to_timestamp(string key) */
 PHP_FUNCTION(ukey_to_timestamp)
 {
-    ukey_uint64 id;
+    __uint64_t id;
     char *key;
     int len, ts;
 
@@ -431,7 +387,7 @@ PHP_FUNCTION(ukey_to_timestamp)
 /* {{{ proto array ukey_to_machine(string key) */
 PHP_FUNCTION(ukey_to_machine)
 {
-    ukey_uint64 id;
+    __uint64_t id;
     int datacenter, worker;
     char *key;
     int len;
