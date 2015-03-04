@@ -75,7 +75,6 @@ ZEND_END_MODULE_GLOBALS(ukey)
 typedef unsigned long long __uint64_t;
 
 typedef struct {
-    int worker_id;
     int datacenter_id;
 
     long sequence;

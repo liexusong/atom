@@ -41,11 +41,12 @@ static int pid = -1;
 static int module_init = 0;
 static int le_ukey;
 static int datacenter_id;
+static int worker_id = -1;
 static __uint64_t twepoch;
 static char *memaddr;
 static struct shm shmctx;
 static ukey_context_t *context;
-static int *lock;
+static atomic_t *lock;
 
 /* {{{ ukey_functions[]
  *
@@ -118,6 +119,7 @@ PHP_INI_BEGIN()
           ukey_ini_twepoch)
 PHP_INI_END()
 
+
 int
 ukey_startup(__uint64_t twepoch, int datacenter_id)
 {
@@ -125,30 +127,29 @@ ukey_startup(__uint64_t twepoch, int datacenter_id)
      * we don't use share memory. */
     if (!strcasecmp(sapi_module.name, "cli")) {
 
-        memaddr = malloc(sizeof(int) + sizeof(ukey_context_t));
+        memaddr = malloc(sizeof(atomic_t) + sizeof(ukey_context_t));
         if (!memaddr) {
-            php_printf("Fatal error: Not enough memory\n");
+            php_printf("Fatal error: Not enough memory.\n");
             return -1;
         }
 
         lock = memaddr;
-        context = memaddr + sizeof(int);
+        context = memaddr + sizeof(atomic_t);
 
     } else {
-        shmctx.size = sizeof(int) + sizeof(ukey_context_t);
+        shmctx.size = sizeof(atomic_t) + sizeof(ukey_context_t);
         if (shm_alloc(&shmctx) == -1) {
-            php_printf("Fatal error: Not enough memory\n");
+            php_printf("Fatal error: Not enough memory.\n");
             return -1;
         }
 
         lock = shmctx.addr;
-        context = (char *)shmctx.addr + sizeof(int);
+        context = (char *)shmctx.addr + sizeof(atomic_t);
     }
 
-    *lock = 0;
+    *lock = 0; /* set lock to zero */
 
     context->twepoch = twepoch;
-    context->worker_id = -1;
     context->datacenter_id = datacenter_id;
 
     context->sequence = 0;
@@ -240,8 +241,8 @@ PHP_RINIT_FUNCTION(ukey)
         pid = (int)getpid();
     }
 
-    if (context->worker_id == -1) { /* init worker ID */
-        context->worker_id = pid & 0x1F;
+    if (worker_id == -1) { /* init worker ID */
+        worker_id = pid & 0x1F;
     }
 
     return SUCCESS;
@@ -329,10 +330,10 @@ PHP_FUNCTION(ukey_next_id)
 
     context->last_timestamp = timestamp;
 
-    retval = ((timestamp - context->twepoch) << context->timestamp_left_shift) |
-          (context->datacenter_id << context->datacenter_id_shift) |
-          (context->worker_id << context->worker_id_shift) |
-          context->sequence;
+    retval = ((timestamp - context->twepoch) << context->timestamp_left_shift)
+           | (context->datacenter_id << context->datacenter_id_shift)
+           | (worker_id << context->worker_id_shift)
+           | context->sequence;
 
     spin_unlock(lock, pid);
 

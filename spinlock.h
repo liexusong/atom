@@ -1,7 +1,9 @@
-#ifndef __BEAST_SPINLOCK_H
-#define __BEAST_SPINLOCK_H
+#ifndef __SPINLOCK_H
+#define __SPINLOCK_H
 
-void beast_spinlock(int *lock, int which);
-void beast_spinunlock(int *lock, int which);
+typedef volatile unsigned int atomic_t;
+
+void spin_lock(atomic_t *lock, int which);
+void spin_unlock(atomic_t *lock, int which);
 
 #endif

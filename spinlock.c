@@ -19,12 +19,12 @@
 /* GCC support */
 
 #include <stdlib.h>
-
+#include "spinlock.h"
 
 extern int ncpu;
 
 
-void spin_lock(int *lock, int which)
+void spin_lock(atomic_t *lock, int which)
 {
     int i, n;
 
@@ -55,7 +55,7 @@ void spin_lock(int *lock, int which)
 }
 
 
-void spin_unlock(int *lock, int which)
+void spin_unlock(atomic_t *lock, int which)
 {
     __sync_bool_compare_and_swap(lock, which, 0);
 }
