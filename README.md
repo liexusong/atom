@@ -41,7 +41,6 @@ $  sudo make install
 <h3>php.ini configure entries:</h3>
 <pre><code>
 [ukey]
-ukey.worker = integer
 ukey.datacenter = integer
 ukey.twepoch = uint64
 </code></pre>
