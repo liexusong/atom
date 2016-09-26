@@ -86,7 +86,7 @@ ZEND_GET_MODULE(ukey)
 
 ZEND_INI_MH(ukey_ini_datacenter_id)
 {
-    if (new_value_length == 0) {
+    if (!ZSTR_LEN(new_value)) {
         return FAILURE;
     }
 
@@ -100,7 +100,7 @@ ZEND_INI_MH(ukey_ini_datacenter_id)
 
 ZEND_INI_MH(ukey_ini_twepoch)
 {
-    if (new_value_length == 0) {
+    if (!ZSTR_LEN(new_value)) {
         return FAILURE;
     }
 
@@ -339,7 +339,7 @@ PHP_FUNCTION(ukey_next_id)
 
     len = sprintf(buf, "%llu", retval);
 
-    RETURN_STRINGL(buf, len, 1);
+    RETURN_STRINGL(buf, len);
 }
 /* }}} */
 
