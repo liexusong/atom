@@ -241,11 +241,12 @@ PHP_FUNCTION(atom_next_id)
 }
 
 
-PHP_FUNCTION(atom_get_time)
+PHP_FUNCTION(atom_explain)
 {
     u64_t id;
     char *key;
-    int len, ts;
+    int len;
+    int ts, wk, dc;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key,
             &len TSRMLS_CC) == FAILURE)
@@ -259,13 +260,18 @@ PHP_FUNCTION(atom_get_time)
 
     /**
      * Don't need locked here,
-     * because timestamp_left_shift and twepoch unchanging
+     * because the fields are unchanging
      */
 
-    id = (id >> context->timestamp_left_shift) + context->twepoch;
-    ts = id / 1000ULL;
+    ts = ((id >> context->timestamp_left_shift) + context->twepoch) / 1000ULL;
+    dc = (id >> context->datacenter_id_shift) & 0x1FULL;
+    wk = (id >> context->worker_id_shift) & 0x1FULL;
 
-    RETURN_LONG(ts);
+    array_init(return_value);
+
+    add_assoc_long(return_value, "timestamp", ts);
+    add_assoc_long(return_value, "datacenter", dc);
+    add_assoc_long(return_value, "worker", wk);
 }
 
 
