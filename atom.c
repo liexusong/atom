@@ -392,8 +392,8 @@ PHP_MINFO_FUNCTION(atom)
  * Every user visible function must have an entry in atom_functions[].
  */
 const zend_function_entry atom_functions[] = {
-	PHP_FE(atom_next_id,     NULL)
-    PHP_FE(atom_get_time,    NULL)
+	PHP_FE(atom_next_id,    NULL)
+    PHP_FE(atom_explain,    NULL)
 	PHP_FE_END	/* Must be the last line in atom_functions[] */
 };
 /* }}} */
