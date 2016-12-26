@@ -2,12 +2,12 @@
 // vim:ft=javascript
 
 // If your extension references something external, use ARG_WITH
-// ARG_WITH("ukey", "for ukey support", "no");
+// ARG_WITH("atom", "for atom support", "no");
 
 // Otherwise, use ARG_ENABLE
-// ARG_ENABLE("ukey", "enable ukey support", "no");
+// ARG_ENABLE("atom", "enable atom support", "no");
 
-if (PHP_UKEY != "no") {
-	EXTENSION("ukey", "ukey.c");
+if (PHP_ATOM != "no") {
+	EXTENSION("atom", "atom.c");
 }
 

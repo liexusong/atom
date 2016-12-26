@@ -16,35 +16,41 @@
   +----------------------------------------------------------------------+
 */
 
-/* GCC support */
-
 #include <stdlib.h>
+#include <unistd.h>
 #include "spinlock.h"
 
-extern int ncpu;
+static int ncpu;
 
+void spin_init()
+{
+    ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+    if (ncpu <= 0) {
+        ncpu = 1;
+    }
+}
 
-void spin_lock(atomic_t *lock, int which)
+void spin_lock(atomic_t *lock, int id)
 {
     int i, n;
 
     for ( ;; ) {
 
-        if (*lock == 0 && 
-            __sync_bool_compare_and_swap(lock, 0, which)) {
+        if (*lock == 0 &&
+            __sync_bool_compare_and_swap(lock, 0, id)) {
             return;
         }
 
         if (ncpu > 1) {
 
             for (n = 1; n < 129; n << 1) {
-    
+
                 for (i = 0; i < n; i++) {
                     __asm("pause");
                 }
-    
-                if (*lock == 0 && 
-                    __sync_bool_compare_and_swap(lock, 0, which)) {
+
+                if (*lock == 0 &&
+                    __sync_bool_compare_and_swap(lock, 0, id)) {
                     return;
                 }
             }
@@ -54,9 +60,7 @@ void spin_lock(atomic_t *lock, int which)
     }
 }
 
-
-void spin_unlock(atomic_t *lock, int which)
+void spin_unlock(atomic_t *lock, int id)
 {
-    __sync_bool_compare_and_swap(lock, which, 0);
+    __sync_bool_compare_and_swap(lock, id, 0);
 }
-

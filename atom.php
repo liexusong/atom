@@ -1,10 +1,10 @@
 <?php
 $br = (php_sapi_name() == "cli")? "":"<br>";
 
-if(!extension_loaded('ukey')) {
-	dl('php_ukey.' . PHP_SHLIB_SUFFIX);
+if(!extension_loaded('atom')) {
+	dl('atom.' . PHP_SHLIB_SUFFIX);
 }
-$module = 'ukey';
+$module = 'atom';
 $functions = get_extension_funcs($module);
 echo "Functions available in the test extension:$br\n";
 foreach($functions as $func) {

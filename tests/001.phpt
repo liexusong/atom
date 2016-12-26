@@ -1,10 +1,10 @@
 --TEST--
-Check for ukey presence
+Check for atom presence
 --SKIPIF--
-<?php if (!extension_loaded("ukey")) print "skip"; ?>
+<?php if (!extension_loaded("atom")) print "skip"; ?>
 --FILE--
 <?php 
-echo "ukey extension is available";
+echo "atom extension is available";
 /*
 	you can add regression tests for your extension here
 
@@ -18,4 +18,4 @@ echo "ukey extension is available";
 */
 ?>
 --EXPECT--
-ukey extension is available
+atom extension is available
