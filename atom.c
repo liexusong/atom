@@ -62,7 +62,7 @@ ZEND_DECLARE_MODULE_GLOBALS(atom)
 static int le_atom;
 static struct shm shmem;
 static struct context *context;
-static pid_t current_pid = -1;
+static pid_t current_pid = 0;
 
 static int datacenter_id;
 static int worker_id;
@@ -352,7 +352,7 @@ PHP_MSHUTDOWN_FUNCTION(atom)
  */
 PHP_RINIT_FUNCTION(atom)
 {
-    if (current_pid == -1) {
+    if (current_pid == 0) {
         current_pid = getpid();
     }
 
