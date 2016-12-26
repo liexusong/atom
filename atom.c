@@ -165,7 +165,7 @@ PHP_INI_BEGIN()
     PHP_INI_ENTRY("atom.datacenter", "0", PHP_INI_ALL,
           atom_ini_set_datacenter_id)
     PHP_INI_ENTRY("atom.worker", "0", PHP_INI_ALL,
-          atom_ini_set_datacenter_id)
+          atom_ini_set_worker)
     PHP_INI_ENTRY("atom.twepoch", "1451606400000", PHP_INI_ALL, /* 2016-01-01 */
           atom_ini_set_twepoch)
 PHP_INI_END()
