@@ -29,7 +29,11 @@
 #include "spinlock.h"
 #include "shm.h"
 
+#ifdef __x86_64__
+typedef unsigned long u64_t;
+#else
 typedef unsigned long long u64_t;
+#endif
 
 struct context {
     atomic_t lock;  /* Lock context */
@@ -209,7 +213,8 @@ PHP_FUNCTION(atom_next_id)
         RETURN_FALSE;
     }
 
-    spin_lock(&context->lock, current_pid); /* Make sure one process get lock */
+    /* Make sure one process get the lock at the same time */
+    spin_lock(&context->lock, (int)current_pid);
 
     if (context->last_ts == current) {
         context->sequence = (context->sequence + 1) & context->sequence_mask;
@@ -228,7 +233,7 @@ PHP_FUNCTION(atom_next_id)
             | (context->worker_id << context->worker_id_shift)
             | context->sequence;
 
-    spin_unlock(&context->lock, current_pid);
+    spin_unlock(&context->lock, (int)current_pid);
 
     len = sprintf(buf, "%llu", retval);
 
