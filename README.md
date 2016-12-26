@@ -13,19 +13,19 @@ functions list:<br />
 &nbsp;&nbsp;&nbsp;Change unique ID to timestamp.<br />
 
 <h3>example:</h3>
-<pre><code>
-&lt;?php
+```php
+<?php
 $id = atom_next_id();
 echo $id;
 
 $time = atom_get_time($id);
 echo date('Y-m-d H:i:s', $time);
-?&gt;
-</code></pre>
+?>
+```
 
 <h3>install:</h3>
 <pre><code>
-$  cd ./ukey
+$  cd ./atom
 $  phpize
 $  ./configure
 $  make
@@ -34,7 +34,7 @@ $  sudo make install
 
 <h3>php.ini configure entries:</h3>
 <pre><code>
-[ukey]
+[atom]
 atom.datacenter = integer
 atom.worker = intger
 atom.twepoch = uint64
