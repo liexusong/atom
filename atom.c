@@ -240,7 +240,11 @@ PHP_FUNCTION(atom_next_id)
 
     len = sprintf(buf, "%llu", retval);
 
+#if ZEND_MODULE_API_NO >= 20151012
+    RETURN_STRINGL(buf, len);
+#else
     RETURN_STRINGL(buf, len, 1);
+#endif
 }
 
 
