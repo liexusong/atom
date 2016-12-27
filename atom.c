@@ -42,15 +42,18 @@ struct context {
     u64_t last_ts;
 
     /* Various once initialized variables */
-    int datacenter_id;
-    int worker_id;
+    u64_t datacenter_id;
+    u64_t worker_id;
     u64_t twepoch;
+
     unsigned char worker_id_bits;
     unsigned char datacenter_id_bits;
     unsigned char sequence_bits;
+
     int worker_id_shift;
     int datacenter_id_shift;
     int timestamp_left_shift;
+
     int sequence_mask;
 };
 
@@ -64,8 +67,8 @@ static struct shm shmem;
 static struct context *context;
 static pid_t current_pid = 0;
 
-static int datacenter_id;
-static int worker_id;
+static u64_t datacenter_id;
+static u64_t worker_id;
 static u64_t twepoch;
 
 ZEND_INI_MH(atom_ini_set_datacenter_id)
@@ -76,7 +79,7 @@ ZEND_INI_MH(atom_ini_set_datacenter_id)
         return FAILURE;
     }
 
-    datacenter_id = atoi(ZSTR_VAL(new_value));
+    datacenter_id = (u64_t)atoi(ZSTR_VAL(new_value));
     if (datacenter_id < 0 || datacenter_id > 31) {
         return FAILURE;
     }
@@ -89,7 +92,7 @@ ZEND_INI_MH(atom_ini_set_datacenter_id)
         return FAILURE;
     }
 
-    datacenter_id = atoi(new_value);
+    datacenter_id = (u64_t)atoi(new_value);
     if (datacenter_id < 0 || datacenter_id > 31) {
         return FAILURE;
     }
@@ -107,7 +110,7 @@ ZEND_INI_MH(atom_ini_set_worker)
         return FAILURE;
     }
 
-    worker_id = atoi(ZSTR_VAL(new_value));
+    worker_id = (u64_t)atoi(ZSTR_VAL(new_value));
     if (worker_id < 0 || worker_id > 31) {
         return FAILURE;
     }
@@ -120,7 +123,7 @@ ZEND_INI_MH(atom_ini_set_worker)
         return FAILURE;
     }
 
-    worker_id = atoi(new_value);
+    worker_id = (u64_t)atoi(new_value);
     if (worker_id < 0 || worker_id > 31) {
         return FAILURE;
     }
@@ -331,13 +334,13 @@ void shutdown_atom_module()
  */
 PHP_MINIT_FUNCTION(atom)
 {
-	REGISTER_INI_ENTRIES();
+    REGISTER_INI_ENTRIES();
 
     if (startup_atom_module() == -1) {
         return FAILURE;
     }
 
-	return SUCCESS;
+    return SUCCESS;
 }
 /* }}} */
 
@@ -345,11 +348,11 @@ PHP_MINIT_FUNCTION(atom)
  */
 PHP_MSHUTDOWN_FUNCTION(atom)
 {
-	UNREGISTER_INI_ENTRIES();
+    UNREGISTER_INI_ENTRIES();
 
     shutdown_atom_module();
 
-	return SUCCESS;
+    return SUCCESS;
 }
 /* }}} */
 
@@ -362,7 +365,7 @@ PHP_RINIT_FUNCTION(atom)
         current_pid = getpid();
     }
 
-	return SUCCESS;
+    return SUCCESS;
 }
 /* }}} */
 
@@ -371,7 +374,7 @@ PHP_RINIT_FUNCTION(atom)
  */
 PHP_RSHUTDOWN_FUNCTION(atom)
 {
-	return SUCCESS;
+    return SUCCESS;
 }
 /* }}} */
 
@@ -379,11 +382,11 @@ PHP_RSHUTDOWN_FUNCTION(atom)
  */
 PHP_MINFO_FUNCTION(atom)
 {
-	php_info_print_table_start();
-	php_info_print_table_header(2, "atom support", "enabled");
-	php_info_print_table_end();
+    php_info_print_table_start();
+    php_info_print_table_header(2, "atom support", "enabled");
+    php_info_print_table_end();
 
-	DISPLAY_INI_ENTRIES();
+    DISPLAY_INI_ENTRIES();
 }
 /* }}} */
 
@@ -392,25 +395,25 @@ PHP_MINFO_FUNCTION(atom)
  * Every user visible function must have an entry in atom_functions[].
  */
 const zend_function_entry atom_functions[] = {
-	PHP_FE(atom_next_id,    NULL)
+    PHP_FE(atom_next_id,    NULL)
     PHP_FE(atom_explain,    NULL)
-	PHP_FE_END	/* Must be the last line in atom_functions[] */
+    PHP_FE_END    /* Must be the last line in atom_functions[] */
 };
 /* }}} */
 
 /* {{{ atom_module_entry
  */
 zend_module_entry atom_module_entry = {
-	STANDARD_MODULE_HEADER,
-	"atom",
-	atom_functions,
-	PHP_MINIT(atom),
-	PHP_MSHUTDOWN(atom),
-	PHP_RINIT(atom),
-	PHP_RSHUTDOWN(atom),
-	PHP_MINFO(atom),
-	PHP_ATOM_VERSION,
-	STANDARD_MODULE_PROPERTIES
+    STANDARD_MODULE_HEADER,
+    "atom",
+    atom_functions,
+    PHP_MINIT(atom),
+    PHP_MSHUTDOWN(atom),
+    PHP_RINIT(atom),
+    PHP_RSHUTDOWN(atom),
+    PHP_MINFO(atom),
+    PHP_ATOM_VERSION,
+    STANDARD_MODULE_PROPERTIES
 };
 /* }}} */
 
