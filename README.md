@@ -36,6 +36,6 @@ $  sudo make install
 <pre><code>
 [atom]
 atom.datacenter = integer
-atom.worker = intger
+atom.worker = integer
 atom.twepoch = uint64
 </code></pre>
