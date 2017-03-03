@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <sched.h>
 #include "spinlock.h"
 
 static int ncpu;
