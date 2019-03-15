@@ -4,7 +4,7 @@ Based on the Twitter Snowflake algorithm
 
 ### PHP unique ID generator
 
-functions list:
+APIs:
 ```php
 /*
  * Get the next unique ID
@@ -14,7 +14,7 @@ string atom_next_id(void)
 /*
  * Change unique ID to array includes: timestamp, datacenter id and worker id
  */
-atom_explain</b>(string ID)
+atom_explain(string ID)
 ```
 
 ### example:
