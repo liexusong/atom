@@ -14,7 +14,7 @@ string atom_next_id(void)
 /*
  * Change unique ID to array includes: timestamp, datacenter id and worker id
  */
-atom_explain(string ID)
+array atom_explain(string ID)
 ```
 
 ### example:
