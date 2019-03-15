@@ -7,11 +7,11 @@ Based on the Twitter Snowflake algorithm
 functions list:
 * 1) string <b>atom_next_id</b>(void);
 
-&nbsp;&nbsp;&nbsp;Get the next unique ID.
+    Get the next unique ID.
 
 * 2) array <b>atom_explain</b>(string ID);
 
-&nbsp;&nbsp;&nbsp;Change unique ID to array includes: timestamp, datacenter id and worker id.
+    Change unique ID to array includes: timestamp, datacenter id and worker id.
 
 ### example:
 ```php
