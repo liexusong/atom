@@ -1,10 +1,8 @@
 Atom
 ====
-Based on the Twitter Snowflake algorithm
+PHP unique ID generator, based on the Twitter `snowflake` algorithm
 
-### PHP unique ID generator
-
-APIs:
+### APIs:
 ```php
 /*
  * Get the next unique ID
