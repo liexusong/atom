@@ -5,11 +5,11 @@ Based on the Twitter Snowflake algorithm
 ### PHP unique ID generator
 
 functions list:
-* 1) string <b>atom_next_id</b>(void);
+* string <b>atom_next_id</b>(void);
 
     Get the next unique ID.
 
-* 2) array <b>atom_explain</b>(string ID);
+* array <b>atom_explain</b>(string ID);
 
     Change unique ID to array includes: timestamp, datacenter id and worker id.
 
