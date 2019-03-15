@@ -7,12 +7,12 @@ PHP unique ID generator, based on the Twitter `snowflake` algorithm
 /*
  * Get the next unique ID
  */
-string atom_next_id(void)
+string atom_next_id()
 
 /*
  * Change unique ID to array includes: timestamp, datacenter id and worker id
  */
-array atom_explain(string ID)
+array atom_explain(string $id)
 ```
 
 ### example:
